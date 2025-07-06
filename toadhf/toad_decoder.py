@@ -87,17 +87,27 @@ def _frame_bits(spec: np.ndarray, col: int, tone_bins: np.ndarray, thr_ratio: fl
 # -----------------------------------------------------------------------------
 # Frame bits → candidate symbols
 # -----------------------------------------------------------------------------
+MAX_DIST  = 4          # keep
+GAP_DIST  = 1          # new
 
 def _symbols_from_bits(bits: np.ndarray) -> str:
     """Return a single char or a tie‑token like "[H|K]" or '?' for blank."""
-    if bits.sum() < MIN_ACTIVE_BITS:
+    pop = bits.sum()
+    if pop < MIN_ACTIVE_BITS:
         return '?'
     dists = (_TOAD_BITS ^ bits).sum(axis=1)
     d_min = dists.min()
     if d_min > MAX_DIST:
         return '?'
+
+    # gap test ---------------------------------------------------------------
+    second_best = np.partition(dists, 1)[1]     # 2nd smallest distance
+    if second_best - d_min >= GAP_DIST:
+        return _TOAD_CHARS[dists.argmin()]    # clear winner
+
+    # otherwise keep current tie-token behaviour
     winners = [c for c, d in zip(_TOAD_CHARS, dists) if d == d_min]
-    return winners[0] if len(winners) == 1 else f"[{'|'.join(winners)}]"
+    return f"[{'|'.join(winners)}]"
 
 # -----------------------------------------------------------------------------
 # Marker (preamble/post‑amble) detection helpers
