@@ -7,7 +7,6 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 import threading, time, os, sys
 
-import ggwave
 import threading
 import sounddevice as sd
 import soundfile as sf
@@ -23,29 +22,52 @@ from config import *
 
 import numpy as np
 
-def listen_loop(session, radio, device="USB Audio CODEC", samplerate=48000):
-    record_duration = 10.0
-    output_dir = "recordings"
+stop_event = threading.Event()
+
+def listen_loop(session, radio, stop_event,
+                device="USB Audio CODEC", samplerate=48000):
+    """Background recorder/decoder."""
+    record_duration = AUDIO_CHUNK_LEN
+    output_dir = RECORDINGS_DIR
     os.makedirs(output_dir, exist_ok=True)
 
     with patch_stdout():
         print(f"[ToAD] Listening on {radio} ('{device}')")
-        stream = sd.InputStream(device=device, channels=1, samplerate=samplerate, dtype='float32')
-        stream.start()
 
-        while True:
-            audio, _ = stream.read(int(record_duration * samplerate))
-            filename = os.path.join(output_dir, f"toad_{time.strftime('%Y%m%d_%H%M%S')}.wav")
-            sf.write(filename, audio, samplerate)
+        try:
+            # context manager guarantees close() even on exceptions
+            with sd.InputStream(device=device,
+                                channels=1,
+                                samplerate=samplerate,
+                                dtype='float32') as stream:
 
-            try:
-                results = decode_file(filename)
-            except RuntimeError:
-                print(f"[ToAD] No decode from last {record_duration}s")
-                continue
+                while not stop_event.is_set():
+                    # read in smaller chunks so we wake quickly
+                    frames = int(min(record_duration, record_duration) * samplerate)
+                    try:
+                        audio, _ = stream.read(frames)
+                    except sd.PortAudioError as e:
+                        # Device closed while blocking in read()?
+                        if stop_event.is_set():
+                            break          # normal shutdown
+                        print("[ToAD] PortAudio error:", e)
+                        continue
 
-            for msg in results:
-                print(f"[RECV] {msg}")
+                    # save + decode …
+                    filename = os.path.join(
+                        output_dir,
+                        f"toad_{time.strftime('%Y%m%d_%H%M%S')}.wav"
+                    )
+                    sf.write(filename, audio, samplerate)
+
+                    try:
+                        for msg in decode_file(filename):
+                            print(f"[RECV] {msg}")
+                    except RuntimeError:
+                        print("[ToAD] No decode in last chunk")
+
+        finally:
+            print("[ToAD] Listener thread stopping…" )
 
 def main():
     radio = RADIO_CLASS()
@@ -76,7 +98,7 @@ def main():
     session = PromptSession("[SEND] > ")
 
     # Start listener thread, passing the session so it can print above it
-    rx_thread = threading.Thread(target=listen_loop, args=(session, radio), daemon=True)
+    rx_thread = threading.Thread(target=listen_loop, args=(session, radio, stop_event), daemon=True)
     rx_thread.start()
     time.sleep(0.5)
 
@@ -100,10 +122,14 @@ def main():
     except sd.PortAudioError:
         sys.exit(0)
     except KeyboardInterrupt:
+        stop_event.set()
+        print("[ToAD] Shutting down...")
         sys.exit(0)
     finally:
+        rx_thread.join(timeout=AUDIO_CHUNK_LEN + 0.25)
         radio.ptt_off()
         radio.close()
+        print("[ToAD] Exiting")
 
 if __name__ == '__main__':
     main()

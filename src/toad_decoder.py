@@ -28,25 +28,15 @@ import numpy as np
 import scipy.io.wavfile as wav
 import scipy.signal as sig
 
-# -----------------------------------------------------------------------------
-# Constants – must match the encoder
-# -----------------------------------------------------------------------------
-FFT_SIZE              = 2048
-HOP_SIZE              = FFT_SIZE // 4
+
+# === Decoder specific constants ===
 WINDOW                = np.hanning(FFT_SIZE)
-
-SR                    = 48_000                  # GGWave sample‑rate
-SYMBOL_RATE           = 8                       # sym/s
-NUM_TONES             = 16                      # 16 frequency bins
-FREQ_MIN              = 100.0
-FREQ_STEP             = 50.0                  # 16 × 175 = 2800 Hz span
-
-STFT_RATE             = SR / HOP_SIZE           # ≈ 187.5 frames/s
-SYMBOL_HOP_FRAMES     = int(round(STFT_RATE / SYMBOL_RATE))   # ≈ 23
-
+SR                    = SAMPLE_RATE                  # GGWave sample‑rate
+STFT_RATE             = SR / HOP_SIZE           # ≈187.5 frames/s
+SYMBOL_HOP_FRAMES     = int(round(STFT_RATE / TOAD_SYMBOL_RATE))   # ≈ 23
 MAX_DIST              = 2                       # max Hamming distance accepted
 MIN_ACTIVE_BITS       = 2                       # expect 2 ones per data symbol
-MARKER_MIN_BITS       = NUM_TONES - 2           # ≥14 ⇒ treat as ^ marker
+MARKER_MIN_BITS       = TOAD_NUM_TONES - 2           # ≥14 ⇒ treat as ^ marker
 
 # -----------------------------------------------------------------------------
 # Code‑book
@@ -81,8 +71,8 @@ def _tone_bins(freqs: np.ndarray) -> np.ndarray:
     freqs = np.fft.rfftfreq(FFT_SIZE, 1 / SR)
 
     return np.array([
-        np.argmin(np.abs(freqs - (FREQ_MIN + i * FREQ_STEP)))
-        for i in range(NUM_TONES)
+        np.argmin(np.abs(freqs - (TOAD_FREQ_MIN + i * TOAD_FREQ_STEP)))
+        for i in range(TOAD_NUM_TONES)
     ])
 
 # -----------------------------------------------------------------------------
@@ -116,7 +106,7 @@ def _majority_window(spec: np.ndarray, tone_bins: np.ndarray, *, start: int, end
                      tol_bits: int, majority_windows=((10, 8), (4, 3)), min_run: int = 5,
                      reverse: bool = False) -> tuple[int, int] | None:
     cols = range(start, end) if not reverse else range(end - 1, start - 1, -1)
-    target = np.ones(NUM_TONES, dtype=np.uint8)
+    target = np.ones(TOAD_NUM_TONES, dtype=np.uint8)
 
     def good(c: int) -> bool:
         return (_frame_bits(spec, c, tone_bins) ^ target).sum() <= tol_bits
