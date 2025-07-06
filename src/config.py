@@ -29,7 +29,7 @@ SAMPLE_RATE = 48_000          # Hz. Sample rate for audio
 TOAD_SYMBOL_RATE = 8               # 1 symbol = 1/8 s
 TOAD_NUM_TONES   = 16				 
 TOAD_FREQ_MIN    = 100.0          # Hz of the first bin
-TOAD_FREQ_STEP   = 175         # Hz spacing between bins
+TOAD_FREQ_STEP   = 50         # Hz spacing between bins
 
 if (TOAD_FREQ_MIN + (TOAD_NUM_TONES * TOAD_FREQ_STEP)) > 3000:
 	print("WARNING: TOAD frequency range should be <= 3000 Hz")

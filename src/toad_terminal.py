@@ -168,7 +168,7 @@ def listen_loop(session, radio, device="USB Audio CODEC", samplerate=48000):
 def main():
     radio = RADIO_CLASS()
     if RADIO_AUDIO_NAME is not None:
-        radio.audio = audio
+        radio.audio = RADIO_AUDIO_NAME
 
     if RADIO_CAT_PORT is not None:
         radio.device = RADIO_CAT_PORT

@@ -69,10 +69,11 @@ class IC7300:
         return f"<IC 7300 port={self.device} audio={self.audio}>"
 
 class MockIC7300:
-    def __init__(self, device="/dev/cu.SLAB_USBtoUART", model=3073, baud=115200):
+    def __init__(self, device="/dev/cu.SLAB_USBtoUART",audio="USB Audio CODEC", model=3073, baud=115200):
         self.device = device
         self.model = model
         self.baud = baud
+        self.audio = audio
         self.tx_lock = threading.Lock()
         self.commands = []  # Store issued commands for inspection
 
@@ -122,9 +123,10 @@ class MockIC7300:
 
 
 class FTDX10:
-    def __init__(self, device="/dev/ttyUSB0", model=1042, baud=38400):
+    def __init__(self, device="/dev/ttyUSB0", audio="USB Audio CODEC", model=1042, baud=38400):
         self.device = device
         self.model = model
+        self.audio = audio
         self.baud = baud
         self.tx_lock = threading.Lock()
 
@@ -181,12 +183,16 @@ class FTDX10:
             audio_callback()
             self.ptt_off()
 
+    def __repr__(self):
+        return f"<FTDX10 port={self.device} audio={self.audio}>"
+
 
 class K3S:
-    def __init__(self, device="/dev/ttyUSB0", model=2043, baud=38400):
+    def __init__(self, device="/dev/ttyUSB0", audio="USB Audio CODEC",  model=2043, baud=38400):
         self.device = device
         self.model = model  # 229 is the Hamlib model for Elecraft K3/K3S
         self.baud = baud
+        self.audio = audio
         self.tx_lock = threading.Lock()
 
     def _rigctl(self, *args):
@@ -241,4 +247,7 @@ class K3S:
             self.ptt_on()
             audio_callback()
             self.ptt_off()
+
+    def __repr__(self):
+        return f"<Elecraft K3s port={self.device} audio={self.audio}>"
 

@@ -31,15 +31,15 @@ import scipy.signal as sig
 # -----------------------------------------------------------------------------
 # Constants – must match the encoder
 # -----------------------------------------------------------------------------
-FFT_SIZE              = 1024
-HOP_SIZE              = FFT_SIZE // 4           # 256 ⇒ 187.5 Hz update
+FFT_SIZE              = 2048
+HOP_SIZE              = FFT_SIZE // 4
 WINDOW                = np.hanning(FFT_SIZE)
 
 SR                    = 48_000                  # GGWave sample‑rate
 SYMBOL_RATE           = 8                       # sym/s
 NUM_TONES             = 16                      # 16 frequency bins
 FREQ_MIN              = 100.0
-FREQ_STEP             = 175.0                  # 16 × 175 = 2800 Hz span
+FREQ_STEP             = 50.0                  # 16 × 175 = 2800 Hz span
 
 STFT_RATE             = SR / HOP_SIZE           # ≈ 187.5 frames/s
 SYMBOL_HOP_FRAMES     = int(round(STFT_RATE / SYMBOL_RATE))   # ≈ 23
@@ -78,6 +78,8 @@ def _stft_mag(wave: np.ndarray, rate: int) -> tuple[np.ndarray, np.ndarray]:
 # -----------------------------------------------------------------------------
 
 def _tone_bins(freqs: np.ndarray) -> np.ndarray:
+    freqs = np.fft.rfftfreq(FFT_SIZE, 1 / SR)
+
     return np.array([
         np.argmin(np.abs(freqs - (FREQ_MIN + i * FREQ_STEP)))
         for i in range(NUM_TONES)

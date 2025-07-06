@@ -9,7 +9,7 @@ TOAD_SAMPLE_RATE = 48_000          # Hz
 TOAD_SYMBOL_RATE = 8               # 1 symbol = 1/8 s → 8 symbols/s
 TOAD_NUM_TONES   = 16
 TOAD_FREQ_MIN    = 100.0          # Hz of the first bin
-TOAD_FREQ_STEP   = 175         # Hz spacing between bins
+TOAD_FREQ_STEP   = 50         # Hz spacing between bins
 
 # -----------------------------------------------------------------------------
 # Helpers
