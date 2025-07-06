@@ -4,12 +4,13 @@ import subprocess
 import threading
 
 class IC7300:
-    def __init__(self, device="/dev/ttyUSB0", audio="USB Audio CODEC", model=3073, baud=115200):
+    def __init__(self, device="/dev/ttyUSB0", audio_in="USB Audio CODEC", audio_out="USB Audio CODEC", model=3073, baud=115200):
         self.device = device
         self.model = model
         self.baud = baud
         self.tx_lock = threading.Lock()
-        self.audio = audio
+        self.audio_in = audio_in
+        self.audio_out = audio_out
 
     def _rigctl(self, *args):
         cmd = [
@@ -64,15 +65,16 @@ class IC7300:
             self.ptt_off()
 
     def __repr__(self):
-        return f"<IC 7300 port={self.device} audio={self.audio}>"
+        return f"<IC 7300 port={self.device} audio_in={self.audio_in} audio_out={self.audio_out}>"
 
 class MockIC7300:
-    def __init__(self, device="/dev/cu.SLAB_USBtoUART",audio="USB Audio CODEC", model=3073, baud=115200):
+    def __init__(self, device="/dev/cu.SLAB_USBtoUART",audio_in="USB Audio CODEC", audio_out="USB Audio CODEC", model=3073, baud=115200):
         self.device = device
         self.model = model
         self.baud = baud
-        self.audio = audio
         self.tx_lock = threading.Lock()
+        self.audio_in = audio_in
+        self.audio_out = audio_out
         self.commands = []  # Store issued commands for inspection
 
     def _rigctl(self, *args):
@@ -121,10 +123,11 @@ class MockIC7300:
 
 
 class FTDX10:
-    def __init__(self, device="/dev/ttyUSB0", audio="USB Audio CODEC", model=1042, baud=38400):
+    def __init__(self, device="/dev/ttyUSB0", audio_in="USB Audio CODEC", audio_out="USB Audio CODEC", model=1042, baud=38400):
         self.device = device
         self.model = model
-        self.audio = audio
+        self.audio_in = audio_in
+        self.audio_out = audio_out
         self.baud = baud
         self.tx_lock = threading.Lock()
 
@@ -184,16 +187,17 @@ class FTDX10:
             self.ptt_off()
 
     def __repr__(self):
-        return f"<FTDX10 port={self.device} audio={self.audio}>"
+        return f"<FTDX10 port={self.device} audio_in={self.audio_in} audio_out={self.audio_out}>"
 
 
 class K3S:
-    def __init__(self, device="/dev/ttyUSB0", audio="USB Audio CODEC",  model=2043, baud=38400):
+    def __init__(self, device="/dev/ttyUSB0", audio_in="USB Audio CODEC", audio_out="USB Audio CODEC",  model=2043, baud=38400):
         self.device = device
         self.model = model  # 229 is the Hamlib model for Elecraft K3/K3S
         self.baud = baud
-        self.audio = audio
         self.tx_lock = threading.Lock()
+        self.audio_in = audio_in
+        self.audio_out = audio_out
 
     def _rigctl(self, *args):
         cmd = [
@@ -251,5 +255,5 @@ class K3S:
             self.ptt_off()
 
     def __repr__(self):
-        return f"<Elecraft K3s port={self.device} audio={self.audio}>"
+        return f"<Elecraft K3s port={self.device} audio_in={self.audio_in} audio_out={self.audio_out}>"
 

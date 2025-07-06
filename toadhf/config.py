@@ -12,7 +12,12 @@ CHAR_LEVEL_REDUNDANCY = 2
 # === Radio and I/O ===
 RADIO_CLASS = IC7300
 # If None, use default from Radio class
-RADIO_AUDIO_NAME = None 
+
+# Audio IN is IN TO the radio, out FROM the computer
+RADIO_AUDIO_IN_NAME = None 
+
+# Audio OUT is audio OUT FROM the radio, in TO the computer
+RADIO_AUDIO_OUT_NAME = None
 RADIO_CAT_PORT = None
 RADIO_BAUD_RATE = None
 

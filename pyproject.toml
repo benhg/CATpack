@@ -27,8 +27,8 @@ dependencies = [
 plots = ["matplotlib>=3.8"]
 
 [project.urls]
-Homepage = "https://github.com/your-org/toadhf"
-Issues   = "https://github.com/your-org/toadhf/issues"
+Homepage = "https://github.com/benhg/toadhf"
+Issues   = "https://github.com/benhg/toadhf/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

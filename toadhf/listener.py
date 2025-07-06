@@ -17,7 +17,8 @@ MAX_BUF     = int((ROLLING_SEC + GUARD_SEC) * SAMPLE_RATE)
 
 
 def listen_loop(session, radio, stop_event,
-                *, device="USB Audio CODEC", samplerate=SAMPLE_RATE):
+                *, samplerate=SAMPLE_RATE):
+    device = radio.audio_out
     chunk_frames   = int(AUDIO_CHUNK_LEN * samplerate)
     last_save_time = time.time()
 

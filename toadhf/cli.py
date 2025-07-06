@@ -41,8 +41,11 @@ stop_event = threading.Event()
 
 def main():
     radio = RADIO_CLASS()
-    if RADIO_AUDIO_NAME is not None:
-        radio.audio = RADIO_AUDIO_NAME
+    if RADIO_AUDIO_IN_NAME is not None:
+        radio.audio_in = RADIO_AUDIO_IN_NAME
+
+    if RADIO_AUDIO_OUT_NAME is not None:
+        radio.audio_out = RADIO_AUDIO_OUT_NAME
 
     if RADIO_CAT_PORT is not None:
         radio.device = RADIO_CAT_PORT
@@ -86,7 +89,7 @@ def main():
                 samples = SAMPLE_MULTIPLICATION_FACTOR * np.frombuffer(payload, dtype=np.float32)
                 padding = np.zeros(int(0.02 * samplerate), dtype=np.float32)
                 sd.play(np.concatenate([padding, samples, padding]), samplerate=samplerate,
-                        device=radio.audio)
+                        device=radio.audio_in)
                 sd.wait()
                 radio.ptt_off()
     except sd.PortAudioError:
