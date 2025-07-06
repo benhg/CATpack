@@ -87,8 +87,8 @@ def _frame_bits(spec: np.ndarray, col: int, tone_bins: np.ndarray, thr_ratio: fl
 # -----------------------------------------------------------------------------
 # Frame bits → candidate symbols
 # -----------------------------------------------------------------------------
-MAX_DIST  = 4          # keep
-GAP_DIST  = 1          # new
+MAX_DIST  = 4     
+GAP_DIST  = 1          
 
 def _symbols_from_bits(bits: np.ndarray) -> str:
     """Return a single char or a tie‑token like "[H|K]" or '?' for blank."""
@@ -170,6 +170,8 @@ def _vote(char_stream: list[str], redundancy: int) -> str:
     for blk in blocks:
         scores: Counter[str] = Counter()
         for tok in blk:
+            if tok == '?':
+                continue
             if tok.startswith('[') and tok.endswith(']'):
                 opts = tok[1:-1].split('|')
                 w = 1 / len(opts)
