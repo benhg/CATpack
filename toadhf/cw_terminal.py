@@ -1,7 +1,7 @@
 # cw_terminal.py
 
-from radio_common import IC7300
-from cw_common import MORSE_CODE, DOT_DURATION, SAMPLE_RATE
+from toadhf.radio_common import IC7300
+from toadhf.cw_common import MORSE_CODE, DOT_DURATION, SAMPLE_RATE
 import sounddevice as sd
 import threading
 import numpy as np

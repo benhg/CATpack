@@ -3,7 +3,7 @@ Save configuration options here
 """
 import numpy as np
 
-from radio_common import *
+from toadhf.radio_common import *
 
 # === Signal Processing ===
 SAMPLE_MULTIPLICATION_FACTOR = 1

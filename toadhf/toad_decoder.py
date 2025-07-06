@@ -23,7 +23,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from pathlib import Path
-from config import * 
+from toadhf.config import * 
 import numpy as np
 import scipy.io.wavfile as wav
 import scipy.signal as sig
@@ -41,7 +41,7 @@ MARKER_MIN_BITS       = TOAD_NUM_TONES - 2           # ≥14 ⇒ treat as ^ mark
 # -----------------------------------------------------------------------------
 # Code‑book
 # -----------------------------------------------------------------------------
-from toad_alphabet import TEXT_TO_TOAD, TOAD_TO_TEXT
+from toadhf.toad_alphabet import TEXT_TO_TOAD, TOAD_TO_TEXT
 
 _TOAD_BITS  = np.array([list(map(int, s)) for s in TEXT_TO_TOAD.values()],
                          dtype=np.uint8)

@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.io.wavfile as wav
-from toad_alphabet import TEXT_TO_TOAD
+from toadhf.toad_alphabet import TEXT_TO_TOAD
 
-from config import *
+from toadhf.config import *
 
 # -----------------------------------------------------------------------------
 # Helpers

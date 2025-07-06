@@ -4,10 +4,10 @@ import scipy.signal
 import sys
 from collections import Counter
 
-from config import *
+from toadhf.config import *
 
 # === Codebook Definitions ===
-from ggwave_alphabet import TEXT_TO_GGWAVE, GGWAVE_TO_TEXT
+from toadhf.toad_alphabet import TEXT_TO_GGWAVE, GGWAVE_TO_TEXT
 
 # === Spectrogram & I/O ===
 def compute_spectrogram(waveform, rate):

@@ -1,7 +1,8 @@
 # ggwave_terminal.py
-from radio_common import IC7300, K3S
-from toad_decoder import decode_file
-from toad_encoder import encode_text_to_waveform
+from toadhf.radio_common import IC7300, K3S
+from toadhf.toad_decoder import decode_file
+from toadhf.toad_encoder import encode_text_to_waveform
+from toadhf.config import *
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -17,8 +18,6 @@ import os
 import datetime
 import atexit
 from scipy.signal import butter, lfilter, spectrogram 
-
-from config import *
 
 import numpy as np
 
