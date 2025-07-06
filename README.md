@@ -36,6 +36,7 @@ ToAD-HF is a compact sound-card digital mode that sends short text bursts throug
 python -m venv radio_venv && source radio_venv/bin/activate
 pip install -r requirements.txt
 sudo apt install hamlib          # rigctl backend
+sudo apt install python3-dev
 python toad_terminal.py          # prompts for frequency, then [SEND] >
 ```
 ### 3.2 Hook up your rig
@@ -44,6 +45,8 @@ This will be different for evrey radio. But the basics are: Plug in your USB cab
 
 - We default to `/dev/ttyUSB0` for CAT control.
 - We default to `USB Audio Codec` for sound device. You can use `sd.query_devices()` to get the correct name for your setup.
+
+A helper script `list_toad_devices` is provided to help with this task.
 
 Both of these are configurable by editing config.py
 
