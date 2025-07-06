@@ -1,5 +1,5 @@
 # 🐸 ToAD-HF  
-**Tone-over-Audio Digital for HF radios**  
+**Text-over-Audio Digital for HF radios**  
 _A single-repo sound-card mode for quick keyboard QSOs via data-over-sound — **and a re-usable modem library**_
 
 ---
