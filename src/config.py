@@ -7,7 +7,7 @@ from radio_common import *
 
 # === Signal Processing ===
 SAMPLE_MULTIPLICATION_FACTOR = 1
-CHAR_LEVEL_REDUNDANCY = 4
+CHAR_LEVEL_REDUNDANCY = 1
 
 
 # === Radio and I/O ===
@@ -24,12 +24,14 @@ WINDOW   = np.hanning(FFT_SIZE)
 
 # === Audio Options ===
 SAMPLE_RATE = 48_000          # Hz. Sample rate for audio
+TOAD_SAMPLE_RATE = 48_000 
 
 # === ToAD Mode Configurations ===
 TOAD_SYMBOL_RATE = 8               # 1 symbol = 1/8 s
 TOAD_NUM_TONES   = 16				 
 TOAD_FREQ_MIN    = 100.0          # Hz of the first bin
 TOAD_FREQ_STEP   = 50         # Hz spacing between bins
+TOAD_AMBLE_LENGTH = 8 # Number of frames for preamble/postamble. Must be even.
 
 if (TOAD_FREQ_MIN + (TOAD_NUM_TONES * TOAD_FREQ_STEP)) > 3000:
 	print("WARNING: TOAD frequency range should be <= 3000 Hz")

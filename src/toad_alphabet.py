@@ -12,7 +12,7 @@ A ‘1’ marks an active tone; all others are ‘0’.
 # main mapping  (char → 16-bit string)
 # ---------------------------------------------------------------------------
 
-TEXT_TO_GGWAVE: dict[str, str] = {
+TEXT_TO_TOAD: dict[str, str] = {
   " ": "0000000000000101",
   "0": "0000000000001001",
   "1": "0000000000010001",
@@ -58,12 +58,9 @@ TEXT_TO_GGWAVE: dict[str, str] = {
   "@": "0000000100001000",
   "$": "0000001000001000",
   "#": "0000010000001000",
-  "^": "1111111111111111"
+  "^": "1111111111111111",
+  "MARKER_HI": "1111111100000000",
+  "MARKER_LO": "0000000011111111",
 }
 
-
-
-# Keep this alias because other code uses it
-GGWAVE_CODEBOOK = TEXT_TO_GGWAVE
-
-GGWAVE_TO_TEXT = {value:key for key, value in TEXT_TO_GGWAVE.items()}
+TOAD_TO_TEXT = {value:key for key, value in TEXT_TO_TOAD.items()}

@@ -141,7 +141,7 @@ class FTDX10:
         subprocess.run(cmd, check=True)
 
     def enable_sidetone(self, level=1.0):
-        """Enable sidetone or monitor audio if available (Elecraft may not support this directly)."""
+        """Enable sidetone or monitor audio if available (Yaesu may not support this directly)."""
         try:
             self._rigctl("l", "MONITOR_GAIN", str(level))
         except subprocess.CalledProcessError:
@@ -160,6 +160,8 @@ class FTDX10:
             "CW-R": ("CW-R", "500"),
             "RTTY": ("RTTY", "300"),
             "DATA": ("DATA", "2400"),
+            "DATA-U": ("DATA", "2400"),
+            "DATA-L": ("DATA", "2400"),
         }
         if mode not in mode_map:
             raise ValueError(f"Unsupported mode: {mode}")
@@ -225,6 +227,8 @@ class K3S:
             "CW-R": ("CW-R", "500"),
             "RTTY": ("RTTY", "300"),
             "DATA": ("DATA", "2400"),
+            "DATA-U": ("DATA", "2400"),
+            "DATA-L": ("DATA", "2400"),
         }
         if mode not in mode_map:
             raise ValueError(f"Unsupported mode: {mode}")

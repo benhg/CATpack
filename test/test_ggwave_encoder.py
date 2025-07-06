@@ -1,8 +1,13 @@
 import numpy as np
 import scipy.io.wavfile as wav
-from toad_alphabet import TEXT_TO_TOAD
+from ggwave_alphabet import TEXT_TO_GGWAVE
 
-from config import *
+# === GGWave Configurations ===
+GGWAVE_SAMPLE_RATE = 48_000          # Hz
+GGWAVE_SYMBOL_RATE = 8               # 1 symbol = 1/8 s → 8 symbols/s
+GGWAVE_NUM_TONES   = 16
+GGWAVE_FREQ_MIN    = 100.0          # Hz of the first bin
+GGWAVE_FREQ_STEP   = 175         # Hz spacing between bins
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -37,15 +42,15 @@ def encode_text_to_waveform(text: str,
                             fade_ms: float = 4.0) -> np.ndarray:
     """Return GGWave‑compatible float32 waveform in [‑1,1]."""
 
-    sr        = TOAD_SAMPLE_RATE
-    sym_dur   = 1.0 / TOAD_SYMBOL_RATE
+    sr        = GGWAVE_SAMPLE_RATE
+    sym_dur   = 1.0 / GGWAVE_SYMBOL_RATE
     sym_samps = int(round(sr * sym_dur))
     fade_samp = min(sym_samps // 2, int(round(sr * fade_ms / 1000)))
 
     # Build symbol patterns ----------------------------------------------------
-    all_ones  = "1" * TOAD_NUM_TONES
+    all_ones  = "1" * GGWAVE_NUM_TONES
     patterns  = [all_ones] * preamble_len + \
-                [TEXT_TO_TOAD.get(ch, all_ones) for ch in text] + \
+                [TEXT_TO_GGWAVE.get(ch, all_ones) for ch in text] + \
                 [all_ones] * preamble_len
     n_syms    = len(patterns)
 
@@ -56,7 +61,7 @@ def encode_text_to_waveform(text: str,
     total_samps  = n_syms * sym_samps
     time_index   = np.arange(total_samps, dtype=np.float32) / sr
 
-    freqs = TOAD_FREQ_MIN + np.arange(TOAD_NUM_TONES) * TOAD_FREQ_STEP
+    freqs = GGWAVE_FREQ_MIN + np.arange(GGWAVE_NUM_TONES) * GGWAVE_FREQ_STEP
     two_pi = 2 * np.pi
 
     waveform = np.zeros(total_samps, dtype=np.float32)
@@ -90,14 +95,14 @@ def encode_text_to_waveform(text: str,
 # -----------------------------------------------------------------------------
 
 def write_waveform_to_wav(waveform: np.ndarray, filename: str) -> None:
-    wav.write(filename, TOAD_SAMPLE_RATE, waveform)
+    wav.write(filename, GGWAVE_SAMPLE_RATE, waveform)
 
 
 # -----------------------------------------------------------------------------
 # Quick CLI test
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    plain_msg = "HELLO WORLD"
+    plain_msg = "KN6UBF"
     re_msg = "".join([c * 4 for c in plain_msg])
     wf  = encode_text_to_waveform(re_msg)
     write_waveform_to_wav(wf, "ggwave_encoded.wav")

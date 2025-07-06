@@ -51,11 +51,11 @@ MARKER_MIN_BITS       = NUM_TONES - 2           # ≥14 ⇒ treat as ^ marker
 # -----------------------------------------------------------------------------
 # Code‑book
 # -----------------------------------------------------------------------------
-from ggwave_alphabet import TEXT_TO_GGWAVE, GGWAVE_TO_TEXT
+from toad_alphabet import TEXT_TO_TOAD, TOAD_TO_TEXT
 
-_GGWAVE_BITS  = np.array([list(map(int, s)) for s in TEXT_TO_GGWAVE.values()],
+_TOAD_BITS  = np.array([list(map(int, s)) for s in TEXT_TO_TOAD.values()],
                          dtype=np.uint8)
-_GGWAVE_CHARS = list(TEXT_TO_GGWAVE.keys())
+_TOAD_CHARS = list(TEXT_TO_TOAD.keys())
 
 # -----------------------------------------------------------------------------
 # STFT helpers
@@ -101,11 +101,11 @@ def _symbols_from_bits(bits: np.ndarray) -> str:
     """Return a single char or a tie‑token like "[H|K]" or '?' for blank."""
     if bits.sum() < MIN_ACTIVE_BITS:
         return '?'
-    dists = (_GGWAVE_BITS ^ bits).sum(axis=1)
+    dists = (_TOAD_BITS ^ bits).sum(axis=1)
     d_min = dists.min()
     if d_min > MAX_DIST:
         return '?'
-    winners = [c for c, d in zip(_GGWAVE_CHARS, dists) if d == d_min]
+    winners = [c for c, d in zip(_TOAD_CHARS, dists) if d == d_min]
     return winners[0] if len(winners) == 1 else f"[{'|'.join(winners)}]"
 
 # -----------------------------------------------------------------------------
