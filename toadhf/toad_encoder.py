@@ -2,6 +2,7 @@ import numpy as np
 import scipy.io.wavfile as wav
 from toadhf.toad_alphabet import TEXT_TO_TOAD
 import scipy.signal as sig
+from scipy.signal.windows import tukey
 
 from toadhf.config import *
 
@@ -53,59 +54,58 @@ def bandpass(x: np.ndarray) -> np.ndarray:
 def encode_text_to_waveform(text: str,
                             preamble_len: int = 8,
                             amplitude: float = 0.8,
-                            fade_ms: float = 4.0) -> np.ndarray:
-    """Return GGWave‑compatible float32 waveform in [‑1,1]."""
-    text = " " + text
-    sr        = TOAD_SAMPLE_RATE
-    sym_dur   = 1.0 / TOAD_SYMBOL_RATE
-    sym_samps = int(round(sr * sym_dur))
-    fade_samp = min(sym_samps // 2, int(round(sr * fade_ms / 1000)))
+                            fade_ms: float = 6.0,
+                            guard_len: int = 1
+                            ) -> np.ndarray:
+    """
+    Generate float32 base-band waveform with two active tones per symbol.
+    Now each tone is multiplied by a raised-cosine gate so there are no hard
+    on/off edges (reduces decoding ties & adjacent-channel splatter).
+    """
+    text        = " " + text                 # keep your leading blank
+    sr          = TOAD_SAMPLE_RATE
+    sym_dur     = 1.0 / TOAD_SYMBOL_RATE
+    sym_samps   = int(round(sr * sym_dur))
+    fade_samps  = int(sr * fade_ms / 1000)   # ≈ 288 @ 48 kHz
 
-    # Build symbol patterns ----------------------------------------------------
-    all_ones  = "1" * TOAD_NUM_TONES
-    all_zeroes = "0" * TOAD_NUM_TONES
-    patterns  = [all_ones] * preamble_len + \
-                [TEXT_TO_TOAD.get(ch, all_ones) for ch in text] + \
-                [all_ones] * preamble_len
-    n_syms    = len(patterns)
+    # ------------------------------------------------------------------ symbols
+    ones        = "1" * TOAD_NUM_TONES
+    guard       = ["0" * TOAD_NUM_TONES] * guard_len
+    pats        = ([ones] * preamble_len +
+                   guard +
+                   [TEXT_TO_TOAD.get(c, ones) for c in text] +
+                   guard +
+                   [ones] * preamble_len)
+    bits        = np.array([[int(b) for b in p] for p in pats], dtype=np.uint8)
 
-    # Binary matrix (syms × tones) --------------------------------------------
-    bit_mat   = np.array([[int(b) for b in pat] for pat in patterns], dtype=np.uint8)
+    total       = len(pats) * sym_samps
+    t           = np.arange(total, dtype=np.float32) / sr
+    freqs       = TOAD_FREQ_MIN + np.arange(TOAD_NUM_TONES) * TOAD_FREQ_STEP
+    waveform    = np.zeros(total, dtype=np.float32)
+    active_cnt  = np.zeros(total, dtype=np.float32)
 
-    # For each tone, build long 0/1 vector and smooth -------------------------
-    total_samps  = n_syms * sym_samps
-    time_index   = np.arange(total_samps, dtype=np.float32) / sr
+    # ----------------------------------------------------------------- gate win
+    # A Tukey window with α = 1 is a Bartlett (triangular); α = 0 is a rect.
+    # We build ONE window of length 'sym_samps' and reuse it for all tones.
+    if fade_samps > 0:
+        alpha     = 2 * fade_samps / sym_samps      # fraction of tapered part
+        win_single = tukey(sym_samps, alpha)
+    else:
+        win_single = np.ones(sym_samps, dtype=np.float32)
 
-    freqs = TOAD_FREQ_MIN + np.arange(TOAD_NUM_TONES) * TOAD_FREQ_STEP
+    gate_long = np.repeat(bits, sym_samps, axis=0) * np.tile(win_single, len(pats))[:, None]
+
+    # ------------------------------------------------------------------ synth
     two_pi = 2 * np.pi
+    for k, f in enumerate(freqs):
+        phase     = two_pi * f * t
+        tone      = np.sin(phase)
+        gate_k    = gate_long[:, k]
+        waveform += tone * gate_k
+        active_cnt += gate_k
 
-    waveform = np.zeros(total_samps, dtype=np.float32)
-    active_cnt = np.zeros(total_samps, dtype=np.float32)  # how many tones on per sample
-
-    for k, freq in enumerate(freqs):
-        # gate for this tone over the whole file
-        gate_sym = bit_mat[:, k]                                    # (n_syms,)
-        gate_long = np.repeat(gate_sym, sym_samps)                  # (total_samps,)
-        gate_long = _smooth_gate(gate_long, fade_samp)              # raised‑cosine edges
-
-        # continuous phase -----------------------------------------------------
-        phase_inc = two_pi * freq / sr
-        phase = phase_inc * np.arange(total_samps, dtype=np.float32)
-        tone = np.sin(phase)
-
-        waveform += tone * gate_long
-        active_cnt += gate_long
-
-    # Power equalisation: scale by 1 / max(1, n_active) -----------------------
-    active_cnt = np.maximum(active_cnt, 1.0)
-    waveform  /= active_cnt
-
-    waveform = bandpass(waveform)
-
-    # Normalise final amplitude -----------------------------------------------
     waveform *= amplitude / np.max(np.abs(waveform))
     return waveform.astype(np.float32)
-
 
 # -----------------------------------------------------------------------------
 # Convenience I/O

@@ -77,12 +77,25 @@ def _tone_bins(freqs: np.ndarray) -> np.ndarray:
     ])
 
 # -----------------------------------------------------------------------------
-# Column → 25‑bit vector
+# Column → 16-bit vector
 # -----------------------------------------------------------------------------
 
-def _frame_bits(spec: np.ndarray, col: int, tone_bins: np.ndarray, thr_ratio: float = 0.45) -> np.ndarray:
-    en = np.array([spec[max(0, b - 1): b + 2, col].sum() for b in tone_bins])
-    return (en > thr_ratio * en.max()).astype(np.uint8)
+# toadhf/toad_decoder.py  – replace _frame_bits
+def _frame_bits(spec, col, tone_bins, thr_ratio=0.55) -> np.ndarray:
+    """
+    Return a 0/1 vector for one STFT column.
+    * thr_ratio   – energy threshold as a fraction of the *strongest* tone
+    """
+    e = np.array([spec[max(0,b-1):b+2, col].sum() for b in tone_bins])
+    bits = (e > thr_ratio * e.max()).astype(np.uint8)
+
+    # keep only the **two** strongest bins if we got more except if this is a SFD
+    if bits.sum() > 2 and bits.sum() < 10:
+        top2 = np.argsort(e)[-2:]
+        bits[:] = 0
+        bits[top2] = 1
+    return bits
+
 
 # -----------------------------------------------------------------------------
 # Frame bits → candidate symbols
@@ -90,24 +103,25 @@ def _frame_bits(spec: np.ndarray, col: int, tone_bins: np.ndarray, thr_ratio: fl
 MAX_DIST  = 4     
 GAP_DIST  = 1          
 
-def _symbols_from_bits(bits: np.ndarray) -> str:
-    """Return a single char or a tie‑token like "[H|K]" or '?' for blank."""
-    pop = bits.sum()
-    if pop < MIN_ACTIVE_BITS:
-        return '?'
+def _symbols_from_bits(bits: np.ndarray) -> tuple[str, float]:
+    """
+    Return (token, weight) where:
+      token  – single symbol, tie token '[A|B]' or '?' for blank
+      weight – confidence weight to be used by the voter
+    """
+    if bits.sum() < 2:
+        return ('?', 0.0)                  # no vote
+
     dists = (_TOAD_BITS ^ bits).sum(axis=1)
     d_min = dists.min()
-    if d_min > MAX_DIST:
-        return '?'
+    if d_min > 2:                          # >1 is too vague – ignore
+        return ('?', 0.0)
 
-    # gap test ---------------------------------------------------------------
-    second_best = np.partition(dists, 1)[1]     # 2nd smallest distance
-    if second_best - d_min >= GAP_DIST:
-        return _TOAD_CHARS[dists.argmin()]    # clear winner
-
-    # otherwise keep current tie-token behaviour
     winners = [c for c, d in zip(_TOAD_CHARS, dists) if d == d_min]
-    return f"[{'|'.join(winners)}]"
+    token   = winners[0] if len(winners) == 1 else f"[{'|'.join(winners)}]"
+    weight  = 1.0 / (1 + d_min)            # 1.0 for d=0, 0.5 for d=1
+    return (token, weight)
+
 
 # -----------------------------------------------------------------------------
 # Marker (preamble/post‑amble) detection helpers
@@ -164,24 +178,43 @@ def _find_marker_rev(spec: np.ndarray, tone_bins: np.ndarray, *, search_to: int,
 # Redundancy vote (understands tie‑tokens)
 # -----------------------------------------------------------------------------
 
-def _vote(char_stream: list[str], redundancy: int) -> str:
-    blocks = [char_stream[i:i + redundancy] for i in range(0, len(char_stream), redundancy)]
+from collections import defaultdict
+
+def _vote(char_stream: list[tuple[str, float]], redundancy: int) -> str:
+    """
+    *char_stream* is now a list of (token, weight) coming from the call above.
+    """
     out = []
-    for blk in blocks:
-        scores: Counter[str] = Counter()
-        for tok in blk:
-            if tok == '?':
-                continue
-            if tok.startswith('[') and tok.endswith(']'):
+    for i in range(0, len(char_stream), redundancy):
+        blk = char_stream[i:i + redundancy]
+
+        scores = defaultdict(float)        # symbol → accumulated weight
+        for tok, w in blk:
+            if w == 0.0:
+                continue                   # skip useless frame
+            if tok.startswith('['):        # tie token: split weight equally
                 opts = tok[1:-1].split('|')
-                w = 1 / len(opts)
-                scores.update({o: w for o in opts})
+                share = w / len(opts)
+                for o in opts:
+                    scores[o] += share
             else:
-                scores[tok] += 1
-        max_v = max(scores.values()) if scores else 0
-        winners = sorted(c for c, v in scores.items() if v == max_v)
-        out.append(winners[0] if len(winners) == 1 else f"[{'|'.join(winners)}]")
+                scores[tok] += w
+
+        if not scores:                     # all were discarded → '?'
+            out.append('?')
+            continue
+
+        best_sym, best_val = max(scores.items(), key=lambda kv: kv[1])
+        # is the second best within 10 %?
+        sorted_vals = sorted(scores.values(), reverse=True)
+        if len(sorted_vals) >= 2 and sorted_vals[1] >= 0.9 * best_val:
+            ties = [s for s, v in scores.items() if abs(v - best_val) < 0.1*best_val]
+            out.append(f"[{'|'.join(sorted(ties))}]")
+        else:
+            out.append(best_sym)
+
     return ''.join(out)
+
 
 # -----------------------------------------------------------------------------
 # Decode pipeline
