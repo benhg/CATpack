@@ -169,7 +169,7 @@ def _find_marker_fwd(spec: np.ndarray, tone_bins: np.ndarray, *, search_from: in
 
 
 def _find_marker_rev(spec: np.ndarray, tone_bins: np.ndarray, *, search_to: int, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=2, **kw)
+    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=1, **kw)
     if res is None:
         raise RuntimeError("Marker not found (reverse)")
     return res

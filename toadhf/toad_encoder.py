@@ -74,7 +74,6 @@ def encode_text_to_waveform(text: str,
     pats        = ([ones] * preamble_len +
                    guard +
                    [TEXT_TO_TOAD.get(c, ones) for c in text] +
-                   guard +
                    [ones] * preamble_len)
     bits        = np.array([[int(b) for b in p] for p in pats], dtype=np.uint8)
 
