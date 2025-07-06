@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.io.wavfile as wav
 from toadhf.toad_alphabet import TEXT_TO_TOAD
+import scipy.signal as sig
 
 from toadhf.config import *
 
@@ -8,10 +9,23 @@ from toadhf.config import *
 # Helpers
 # -----------------------------------------------------------------------------
 
+_nyq = 0.5 * TOAD_SAMPLE_RATE
+_LOW_F      = TOAD_FREQ_MIN                     # 100 Hz
+_HIGH_F     = TOAD_FREQ_MIN + TOAD_NUM_TONES * TOAD_FREQ_STEP  # e.g. 900 Hz
+_SOS = sig.butter(4, [_LOW_F/_nyq, _HIGH_F/_nyq],
+                  btype='band', output='sos')   # order 4 is plenty
+
 def _raised_cosine(fade_samps: int) -> np.ndarray:
     """Half‑cosine window from 0→1 (len = fade_samps)."""
     return 0.5 * (1 - np.cos(np.linspace(0, np.pi, fade_samps)))
 
+def _fade_envelope(n_samples: int, fade_ms: float, sr: int) -> np.ndarray:
+    k = int(sr * fade_ms / 1000)
+    ramp = 0.5 * (1 - np.cos(np.linspace(0, np.pi, k)))
+    env  = np.ones(n_samples, dtype=np.float32)
+    env[:k]        = ramp          # fade-in
+    env[-k:]       = ramp[::-1]    # fade-out
+    return env
 
 def _smooth_gate(bit_vec: np.ndarray, fade_samps: int) -> np.ndarray:
     """Return a smoothed 0/1 gate (raised‑cosine on/off)."""
@@ -27,6 +41,11 @@ def _smooth_gate(bit_vec: np.ndarray, fade_samps: int) -> np.ndarray:
     g = np.convolve(bit_vec.astype(np.float32), win_full, mode="same")
     return np.clip(g, 0.0, 1.0)
 
+
+def bandpass(x: np.ndarray) -> np.ndarray:
+    """Fast forward-only IIR band-pass (no phase-linear double pass)."""
+    return sig.sosfilt(_SOS, x)
+
 # -----------------------------------------------------------------------------
 # Encoder (continuous‑phase, per‑tone raised‑cosine smoothing, power EQ)
 # -----------------------------------------------------------------------------
@@ -36,7 +55,7 @@ def encode_text_to_waveform(text: str,
                             amplitude: float = 0.8,
                             fade_ms: float = 4.0) -> np.ndarray:
     """Return GGWave‑compatible float32 waveform in [‑1,1]."""
-
+    text = " " + text
     sr        = TOAD_SAMPLE_RATE
     sym_dur   = 1.0 / TOAD_SYMBOL_RATE
     sym_samps = int(round(sr * sym_dur))
@@ -44,6 +63,7 @@ def encode_text_to_waveform(text: str,
 
     # Build symbol patterns ----------------------------------------------------
     all_ones  = "1" * TOAD_NUM_TONES
+    all_zeroes = "0" * TOAD_NUM_TONES
     patterns  = [all_ones] * preamble_len + \
                 [TEXT_TO_TOAD.get(ch, all_ones) for ch in text] + \
                 [all_ones] * preamble_len
@@ -79,6 +99,8 @@ def encode_text_to_waveform(text: str,
     # Power equalisation: scale by 1 / max(1, n_active) -----------------------
     active_cnt = np.maximum(active_cnt, 1.0)
     waveform  /= active_cnt
+
+    waveform = bandpass(waveform)
 
     # Normalise final amplitude -----------------------------------------------
     waveform *= amplitude / np.max(np.abs(waveform))

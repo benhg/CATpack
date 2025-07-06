@@ -19,8 +19,6 @@ class IC7300:
             "-s", str(self.baud),
         ]
         cmd.extend(*args)
-        print(cmd)
-        #print(f"Running command: {' '.join(c for c in cmd)}")
         subprocess.run(cmd, check=True)
 
     def enable_sidetone(self, level=1.0):

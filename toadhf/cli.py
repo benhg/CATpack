@@ -2,6 +2,7 @@
 from toadhf.radio_common import IC7300, K3S
 from toadhf.toad_decoder import decode_file
 from toadhf.toad_encoder import encode_text_to_waveform
+from toadhf.listener import listen_loop
 from toadhf.config import *
 
 from prompt_toolkit import PromptSession
@@ -37,51 +38,6 @@ except ImportError:   # sounddevice not installed
 
 
 stop_event = threading.Event()
-
-def listen_loop(session, radio, stop_event,
-                device="USB Audio CODEC", samplerate=48000):
-    """Background recorder/decoder."""
-    record_duration = AUDIO_CHUNK_LEN
-    output_dir = RECORDINGS_DIR
-    os.makedirs(output_dir, exist_ok=True)
-
-    with patch_stdout():
-        print(f"[ToAD] Listening on {radio} ('{device}')")
-
-        try:
-            # context manager guarantees close() even on exceptions
-            with sd.InputStream(device=device,
-                                channels=1,
-                                samplerate=samplerate,
-                                dtype='float32') as stream:
-
-                while not stop_event.is_set():
-                    # read in smaller chunks so we wake quickly
-                    frames = int(min(record_duration, record_duration) * samplerate)
-                    try:
-                        audio, _ = stream.read(frames)
-                    except sd.PortAudioError as e:
-                        # Device closed while blocking in read()?
-                        if stop_event.is_set():
-                            break          # normal shutdown
-                        print("[ToAD] PortAudio error:", e)
-                        continue
-
-                    # save + decode …
-                    filename = os.path.join(
-                        output_dir,
-                        f"toad_{time.strftime('%Y%m%d_%H%M%S')}.wav"
-                    )
-                    sf.write(filename, audio, samplerate)
-
-                    try:
-                        for msg in decode_file(filename):
-                            print(f"[RECV] {msg}")
-                    except RuntimeError:
-                        print("[ToAD] No decode in last chunk")
-
-        finally:
-            print("[ToAD] Listener thread stopping…" )
 
 def main():
     radio = RADIO_CLASS()

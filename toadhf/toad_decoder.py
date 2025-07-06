@@ -34,9 +34,10 @@ WINDOW                = np.hanning(FFT_SIZE)
 SR                    = SAMPLE_RATE                  # GGWave sample‑rate
 STFT_RATE             = SR / HOP_SIZE           # ≈187.5 frames/s
 SYMBOL_HOP_FRAMES     = int(round(STFT_RATE / TOAD_SYMBOL_RATE))   # ≈ 23
-MAX_DIST              = 2                       # max Hamming distance accepted
+MAX_DIST              = 4                       # max Hamming distance accepted
 MIN_ACTIVE_BITS       = 2                       # expect 2 ones per data symbol
 MARKER_MIN_BITS       = TOAD_NUM_TONES - 2           # ≥14 ⇒ treat as ^ marker
+MID_OFFSET = SYMBOL_HOP_FRAMES // 2               # ≈11  (middle of 23)
 
 # -----------------------------------------------------------------------------
 # Code‑book
@@ -174,33 +175,106 @@ def _vote(char_stream: list[str], redundancy: int) -> str:
 # Decode pipeline
 # -----------------------------------------------------------------------------
 
-def decode_file(path: str | Path, redundancy: int = CHAR_LEVEL_REDUNDANCY, *, debug: bool = False) -> str:
-    rate, wav_data = wav.read(path)
-    if rate != SR:
-        raise ValueError(f"Expected {SR} Hz wav, got {rate}")
+def decode_array(
+    wav_data: np.ndarray,
+    rate: int,
+    *,
+    redundancy: int = CHAR_LEVEL_REDUNDANCY,
+    ignore_before: int = 0,               # samples to skip at the start
+    debug: bool = False,
+) -> tuple[list[str], int]:
+    """
+    Decode *all* ToADHF bursts that lie **after** `ignore_before` samples.
+
+    Returns
+    -------
+    messages : list[str]
+        Each decoded ToADHF message (redundancy-voted, amble stripped).
+    last_sample_used : int
+        Index (in samples) just past the final detected post-amble.  Pass
+        this back in as *ignore_before* for the next buffer so partially
+        overlapping calls don’t re-decode the same burst.
+    """
+    # ---- prepare STFT --------------------------------------------------------
     if wav_data.ndim > 1:
         wav_data = wav_data[:, 0]
     wav_data = wav_data.astype(np.float32)
 
     spec, freqs = _stft_mag(wav_data, rate)
-    tbins = _tone_bins(freqs)
+    tbins       = _tone_bins(freqs)
 
     if debug:
         print("Binarised frames for each STFT column:")
         for c in range(spec.shape[1]):
             print(f"{c}:", ''.join(map(str, _frame_bits(spec, c, tbins))))
 
-    pre_s, pre_e = _find_marker_fwd(spec, tbins, search_from=0)
-    post_s, post_e = _find_marker_rev(spec, tbins, search_to=spec.shape[1] - 1)
+    # ---- main scan loop ------------------------------------------------------
+    messages: list[str] = []
+    search_col          = ignore_before // HOP_SIZE
+    last_sample_out     = ignore_before
 
-    if post_s <= pre_e:
-        raise RuntimeError("Post‑amble located before pre‑amble – check marker detection")
+    while True:
+        # 1)  find next pre-amble **forward** from search_col
+        try:
+            pre_s, pre_e = _find_marker_fwd(spec, tbins, search_from=search_col)
+        except RuntimeError:
+            break                                      # no more bursts
 
-    data_cols = range(pre_e + 1, post_s)
-    sym_cols  = data_cols[::SYMBOL_HOP_FRAMES]
+        # 2)  find the post-amble **after** that pre-amble
+        try:
+            post_s, post_e = _find_marker_fwd(spec, tbins,
+                                              search_from=pre_e + 1)
+        except RuntimeError:
+            break                                      # truncated burst
 
-    char_stream = [_symbols_from_bits(_frame_bits(spec, c, tbins)) for c in sym_cols]
-    return [_vote(char_stream, redundancy).replace("^", "")]
+        # 3)  extract symbol columns between them
+        data_cols = range(pre_e + 1, post_s)
+        sym_cols  = [c + MID_OFFSET
+              for c in data_cols[::SYMBOL_HOP_FRAMES]
+              if c + MID_OFFSET < post_s]
+
+        char_stream = [
+            _symbols_from_bits(_frame_bits(spec, c, tbins))
+            for c in sym_cols
+        ]
+        msg = _vote(char_stream, redundancy).replace("^", "")
+        if msg:                                       # drop empty decodes
+            messages.append(msg)
+
+        # 4)  advance search past this post-amble
+        search_col       = post_e + 1
+        last_sample_out  = search_col * HOP_SIZE
+
+    return messages, last_sample_out
+
+
+
+# --------------------------------------------------------------------------
+#  Wrapper that keeps the old signature (filename → list[str])
+# --------------------------------------------------------------------------
+def decode_file(
+    path: str | Path,
+    redundancy: int = CHAR_LEVEL_REDUNDANCY,
+    *,
+    debug: bool = False
+) -> list[str]:
+    """
+    Convenience wrapper that loads *path* into memory then calls
+    :func:`decode_array`.
+    """
+    rate, wav_data = wav.read(path)
+    if rate != SR:
+        raise ValueError(f"Expected {SR}-Hz wav, got {rate}")
+
+    messages, _ = decode_array(
+        wav_data,
+        rate,
+        redundancy=redundancy,
+        debug=debug,
+    )
+    return messages
+
+
 
 # -----------------------------------------------------------------------------
 # CLI
