@@ -257,3 +257,78 @@ class K3S:
     def __repr__(self):
         return f"<Elecraft K3s port={self.device} audio_in={self.audio_in} audio_out={self.audio_out}>"
 
+
+class truSDX:
+    # This assumes that rigctld is running on port 7006:
+    #
+    #    rigctld -m 2055 -T 127.0.0.1 -t 7006 -s 115200 -r $PORT &
+    #
+    # where $PORT is the /dev/tty.usbserial-nnn that the (tr)uSDX was assigned.
+    # This also assumes that the Audio and Mic/Key jacks on the (tr)uSDX are
+    # connected to the headphone jack of a Mac. The baud parameter below is not
+    # used.
+    def __init__(self, device="127.0.0.1:7006", audio_in="External Microphone",
+                 audio_out="External Headphones", model=2, baud=115200):
+        self.device = device
+        self.model = model
+        self.baud = baud
+        self.tx_lock = threading.Lock()
+        self.audio_in = audio_in
+        self.audio_out = audio_out
+
+    def _rigctl(self, *args):
+        cmd = [
+            "rigctl",
+            "-m", str(self.model),
+            "-r", self.device
+        ]
+        cmd.extend(*args)
+        subprocess.run(cmd, check=True)
+
+    def enable_sidetone(self, level=1.0):
+        """Enable monitor audio for sidetone generation during PTT."""
+        # Can't use the (tr)uSDX speaker to monitor the input audio.
+        pass
+
+    def set_freq(self, freq_hz):
+        """Set operating frequency."""
+        self._rigctl(["F", str(freq_hz)])
+
+    def set_mode(self, mode):
+        """Set mode and passband."""
+        mode_map = {
+            # Sideband
+            "USB": ("USB", "2400"),
+            "LSB": ("LSB", "2400"),
+            # Data
+            "DATA-U": ("USB", "3000"),
+            "DATA": ("USB", "3000"),
+            "DATA-L": ("LSB", "3000"),
+            # CW
+            "CW": ("CW", "500")
+        }
+        if mode not in mode_map:
+            raise ValueError(f"Unsupported mode: {mode}")
+        cmd = ["M"] + [m for m in mode_map[mode]]
+        self._rigctl(cmd)
+
+    def ptt_on(self):
+        self._rigctl(["T", "1"])
+
+    def ptt_off(self):
+        self._rigctl(["T", "0"])
+
+    def close(self):
+        pass  # rigctl does not require closing
+
+    def transmit_audio_block(self, audio_callback):
+        """Key PTT, call audio_callback() to play audio, then unkey."""
+        with self.tx_lock:
+            self.ptt_on()
+            audio_callback()
+            self.ptt_off()
+
+    def __repr__(self):
+        return (f"<(tr)uSDX port={self.device} audio_in={self.audio_in}"
+                f" audio_out={self.audio_out}>")
+
