@@ -162,14 +162,14 @@ def _majority_window(spec: np.ndarray, tone_bins: np.ndarray, *, start: int, end
 
 
 def _find_marker_fwd(spec: np.ndarray, tone_bins: np.ndarray, *, search_from: int = 0, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=search_from, end=spec.shape[1], reverse=False, tol_bits=2, **kw)
+    res = _majority_window(spec, tone_bins, start=search_from, end=spec.shape[1], reverse=False, tol_bits=6, **kw)
     if res is None:
         raise RuntimeError("Marker not found (forward)")
     return res
 
 
 def _find_marker_rev(spec: np.ndarray, tone_bins: np.ndarray, *, search_to: int, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=1, **kw)
+    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=5, **kw)
     if res is None:
         raise RuntimeError("Marker not found (reverse)")
     return res
@@ -226,7 +226,7 @@ def decode_array(
     *,
     redundancy: int = CHAR_LEVEL_REDUNDANCY,
     ignore_before: int = 0,               # samples to skip at the start
-    debug: bool = False,
+    debug: bool = True,
 ) -> tuple[list[str], int]:
     """
     Decode *all* ToADHF bursts that lie **after** `ignore_before` samples.
@@ -301,7 +301,7 @@ def decode_file(
     path: str | Path,
     redundancy: int = CHAR_LEVEL_REDUNDANCY,
     *,
-    debug: bool = False
+    debug: bool = True
 ) -> list[str]:
     """
     Convenience wrapper that loads *path* into memory then calls
