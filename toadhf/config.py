@@ -22,8 +22,8 @@ RADIO_CAT_PORT = None
 RADIO_BAUD_RATE = None
 
 # === FFT Parameters ===
-FFT_SIZE              = 2048
-HOP_SIZE              = FFT_SIZE // 4
+FFT_SIZE = 2048
+HOP_SIZE = FFT_SIZE // 4
 WINDOW   = np.hanning(FFT_SIZE)
 
 # === Audio Options ===
@@ -37,6 +37,7 @@ TOAD_NUM_TONES   = 16
 TOAD_FREQ_MIN    = 100.0          # Hz of the first bin
 TOAD_FREQ_STEP   = 50         # Hz spacing between bins
 TOAD_AMBLE_LENGTH = 8 # Number of frames for preamble/postamble. Must be even.
+EFF_SYMBOL_RATE = (TOAD_SYMBOL_RATE) // CHAR_LEVEL_REDUNDANCY # "useful" Baud rate
 
 if (TOAD_FREQ_MIN + (TOAD_NUM_TONES * TOAD_FREQ_STEP)) > 3000:
 	print("WARNING: TOAD frequency range should be <= 3000 Hz")

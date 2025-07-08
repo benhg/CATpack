@@ -104,6 +104,7 @@ def encode_text_to_waveform(text: str,
         active_cnt += gate_k
 
     waveform *= amplitude / np.max(np.abs(waveform))
+    waveform = bandpass(waveform)
     return waveform.astype(np.float32)
 
 # -----------------------------------------------------------------------------
