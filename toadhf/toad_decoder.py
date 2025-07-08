@@ -162,14 +162,14 @@ def _majority_window(spec: np.ndarray, tone_bins: np.ndarray, *, start: int, end
 
 
 def _find_marker_fwd(spec: np.ndarray, tone_bins: np.ndarray, *, search_from: int = 0, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=search_from, end=spec.shape[1], reverse=False, tol_bits=6, **kw)
+    res = _majority_window(spec, tone_bins, start=search_from, end=spec.shape[1], reverse=False, tol_bits=2, **kw)
     if res is None:
         raise RuntimeError("Marker not found (forward)")
     return res
 
 
 def _find_marker_rev(spec: np.ndarray, tone_bins: np.ndarray, *, search_to: int, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=5, **kw)
+    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=1, **kw)
     if res is None:
         raise RuntimeError("Marker not found (reverse)")
     return res
@@ -209,7 +209,8 @@ def _vote(char_stream: list[tuple[str, float]], redundancy: int) -> str:
         sorted_vals = sorted(scores.values(), reverse=True)
         if len(sorted_vals) >= 2 and sorted_vals[1] >= 0.9 * best_val:
             ties = [s for s, v in scores.items() if abs(v - best_val) < 0.1*best_val]
-            out.append(f"[{'|'.join(sorted(ties))}]")
+            if len(ties) <= 3:
+                out.append(f"[{'|'.join(sorted(ties))}]")
         else:
             out.append(best_sym)
 
@@ -226,7 +227,7 @@ def decode_array(
     *,
     redundancy: int = CHAR_LEVEL_REDUNDANCY,
     ignore_before: int = 0,               # samples to skip at the start
-    debug: bool = True,
+    debug: bool = False,
 ) -> tuple[list[str], int]:
     """
     Decode *all* ToADHF bursts that lie **after** `ignore_before` samples.
