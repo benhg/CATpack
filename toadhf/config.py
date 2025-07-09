@@ -14,11 +14,11 @@ RADIO_CLASS = IC7300
 # If None, use default from Radio class
 
 # Audio IN is IN TO the radio, out FROM the computer
-RADIO_AUDIO_IN_NAME = None 
+RADIO_AUDIO_IN_NAME = "USB Audio CODEC" 
 
 # Audio OUT is audio OUT FROM the radio, in TO the computer
-RADIO_AUDIO_OUT_NAME = None
-RADIO_CAT_PORT = None
+RADIO_AUDIO_OUT_NAME = "USB Audio CODEC"
+RADIO_CAT_PORT = "/dev/cu.SLAB_USBtoUART"
 RADIO_BAUD_RATE = None
 
 # === FFT Parameters ===

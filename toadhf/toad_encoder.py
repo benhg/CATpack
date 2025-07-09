@@ -55,14 +55,14 @@ def encode_text_to_waveform(text: str,
                             preamble_len: int = 8,
                             amplitude: float = 0.8,
                             fade_ms: float = 6.0,
-                            guard_len: int = 1
+                            guard_len: int = 2
                             ) -> np.ndarray:
     """
     Generate float32 base-band waveform with two active tones per symbol.
     Now each tone is multiplied by a raised-cosine gate so there are no hard
     on/off edges (reduces decoding ties & adjacent-channel splatter).
     """
-    text        = " " + text                 # keep your leading blank
+    text        = text                 # keep your leading blank
     sr          = TOAD_SAMPLE_RATE
     sym_dur     = 1.0 / TOAD_SYMBOL_RATE
     sym_samps   = int(round(sr * sym_dur))
@@ -71,6 +71,7 @@ def encode_text_to_waveform(text: str,
     # ------------------------------------------------------------------ symbols
     ones        = "1" * TOAD_NUM_TONES
     guard       = ["0" * TOAD_NUM_TONES] * guard_len
+    # TODO: consider not using the guard if we figure out the tukey issue
     pats        = ([ones] * preamble_len +
                    guard +
                    [TEXT_TO_TOAD.get(c, ones) for c in text] +
@@ -92,6 +93,7 @@ def encode_text_to_waveform(text: str,
     else:
         win_single = np.ones(sym_samps, dtype=np.float32)
 
+    # TODO: Consider not applying the filter to the first symbol
     gate_long = np.repeat(bits, sym_samps, axis=0) * np.tile(win_single, len(pats))[:, None]
 
     # ------------------------------------------------------------------ synth
@@ -103,6 +105,8 @@ def encode_text_to_waveform(text: str,
         waveform += tone * gate_k
         active_cnt += gate_k
 
+    # TODO: Consider dividing the preamble/postamble by to 1/sqrt(NUM_ACTIVE_TONES / NUM_TONES) == 1/sqrt(8)
+    # to normalize power
     waveform *= amplitude / np.max(np.abs(waveform))
     waveform = bandpass(waveform)
     return waveform.astype(np.float32)
