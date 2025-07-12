@@ -13,6 +13,8 @@ ToAD-HF is a compact sound-card digital mode that sends short text bursts throug
 * Fuzzy FSK decoder with Hamming-tie handling and configurable redundancy  
 * Works as **CLI _or_ importable library**
 
+Please see [this page](mode_description.md) for more technical details on ToAD.
+
 ---
 
 ## 2 | Repository layout (library & tools)
