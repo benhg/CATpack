@@ -1,4 +1,4 @@
-# 🐸 ToAD HF — Text over Audio (Digital) over HF
+# 🐸 ToAD HF: Text over Audio (Digital) over HF
 
 ToAD HF (*Text over Audio (Digital), over HF*) is an experimental digital mode for amateur radio, designed to be asynchronous, narrowband, ear‑ and eye‑decodable, and fun to hack on.
 
