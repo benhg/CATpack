@@ -332,3 +332,77 @@ class truSDX:
         return (f"<(tr)uSDX port={self.device} audio_in={self.audio_in}"
                 f" audio_out={self.audio_out}>")
 
+
+class IC705:
+    # This assumes that SDR-Control.app is connected to the IC-705, and has a
+    # CAT Server running with RigCtrl / Hamlib on port 5001. It also assumes
+    # that there are audio devices Radio to External and External to Radio,
+    # created by, e.g. Loopback or BlackHole, and that they are configured and
+    # enabled in SDR-Control as the audio output and input devices. The baud
+    # setting is not used.
+    def __init__(self, device="127.0.0.1:5001", audio_in="Radio to External",
+                 audio_out="External to Radio", model=2, baud=115200):
+        self.device = device
+        self.model = model
+        self.baud = baud
+        self.tx_lock = threading.Lock()
+        self.audio_in = audio_in
+        self.audio_out = audio_out
+
+    def _rigctl(self, *args):
+        # Need to repeat mode set to change bandwidth. Go figure.
+        for _ in range(2 if len(args) > 0 and args[0] == "M" else 1):
+            cmd = [
+                "rigctl",
+                "-m", str(self.model),
+                "-r", self.device
+            ]
+            cmd.extend(*args)
+            subprocess.run(cmd, check=True)
+
+    def enable_sidetone(self, level=1.0):
+        """Enable monitor audio for sidetone generation during PTT."""
+        # MONI setting is not implemented in the SDR-Control CAT server.
+        # self._rigctl(["L", "MONITOR_GAIN", str(level)])
+        pass
+
+    def set_freq(self, freq_hz):
+        """Set operating frequency."""
+        self._rigctl(["F", str(freq_hz)])
+
+    def set_mode(self, mode):
+        """Set mode and passband."""
+        mode_map = {
+            # Sideband
+            "USB": ("USB", "2400"),
+            "LSB": ("LSB", "2400"),
+            # Data
+            "DATA-U": ("USB-D", "3000"),
+            "DATA": ("USB-D", "3000"),
+            "DATA-L": ("LSB-D", "3000"),
+            # CW
+            "CW": ("CW", "500")
+        }
+        if mode not in mode_map:
+            raise ValueError(f"Unsupported mode: {mode}")
+        cmd = ["M"] + [m for m in mode_map[mode]]
+        self._rigctl(cmd)
+
+    def ptt_on(self):
+        self._rigctl(["T", "1"])
+
+    def ptt_off(self):
+        self._rigctl(["T", "0"])
+
+    def close(self):
+        pass  # rigctl does not require closing
+
+    def transmit_audio_block(self, audio_callback):
+        """Key PTT, call audio_callback() to play audio, then unkey."""
+        with self.tx_lock:
+            self.ptt_on()
+            audio_callback()
+            self.ptt_off()
+
+    def __repr__(self):
+        return f"<IC-705 port={self.device} audio_in={self.audio_in} audio_out={self.audio_out}>"
