@@ -94,7 +94,7 @@ def main():
                 radio.ptt_off()
     except sd.PortAudioError:
         sys.exit(0)
-    except KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         stop_event.set()
         print("[ToAD] Shutting down...")
         sys.exit(0)
