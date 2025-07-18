@@ -71,11 +71,26 @@ def encode_text_to_waveform(text: str,
     # ------------------------------------------------------------------ symbols
     ones        = "1" * TOAD_NUM_TONES
     guard       = ["0" * TOAD_NUM_TONES] * guard_len
-    # TODO: consider not using the guard if we figure out the tukey issue
-    pats        = ([ones] * preamble_len +
-                   guard +
-                   [TEXT_TO_TOAD.get(c, ones) for c in text] +
-                   [ones] * preamble_len)
+
+    MARKERS_FWD = [
+        TEXT_TO_TOAD["MARKER_1"],
+        TEXT_TO_TOAD["MARKER_2"],
+        TEXT_TO_TOAD["MARKER_3"],
+        TEXT_TO_TOAD["MARKER_4"],
+    ]
+
+    MARKERS_REV = MARKERS_FWD[::-1]
+
+    preamble_seq = (MARKERS_FWD * ((preamble_len + 3) // 4))[:preamble_len]
+    postamble_seq = (MARKERS_REV * ((preamble_len + 3) // 4))[:preamble_len]
+
+    pats = (
+        preamble_seq +
+        guard +
+        [TEXT_TO_TOAD.get(c, ones) for c in text] +
+        postamble_seq
+    )
+
     bits        = np.array([[int(b) for b in p] for p in pats], dtype=np.uint8)
 
     total       = len(pats) * sym_samps
