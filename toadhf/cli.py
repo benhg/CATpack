@@ -171,5 +171,10 @@ def print_device_summary() -> None:  # noqa: D401
             io = f"{d['in_ch']:>2}/{d['out_ch']:<3}"
             print(f"{d['index']:>3}  {io}  {d['rate']:>6}  {d['name']}")
 
+# -----------------------------------------------------------------------------
+
+def show_version():
+    print(f"ToAD Version: {PROTOCOL_VER}")
+
 if __name__ == '__main__':
     main()

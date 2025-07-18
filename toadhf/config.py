@@ -46,4 +46,5 @@ if (TOAD_FREQ_MIN + (TOAD_NUM_TONES * TOAD_FREQ_STEP)) > 3000:
 DEBUG_MODE = True # in debug mode, print debug logs and echo own transmissions
 SAVE_RECORDINGS = True # Save or throw away the 10s recordings at exit
 RECORDINGS_DIR = "recordings/"
+PROTOCOL_VER = "0.1.0"
 

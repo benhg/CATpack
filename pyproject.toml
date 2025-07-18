@@ -36,4 +36,5 @@ exclude = ["examples*", "recordings*", "docs*"]
 
 [project.scripts]
 toad_terminal = "toadhf.cli:main"
-list_toad_devices = "toadhf.cli:print_device_summary"
+toad_list_devices = "toadhf.cli:print_device_summary"
+toad_version = "toadhf.cli:show_version"
