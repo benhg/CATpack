@@ -88,6 +88,7 @@ def encode_text_to_waveform(text: str,
         preamble_seq +
         guard +
         [TEXT_TO_TOAD.get(c, ones) for c in text] +
+        guard +
         postamble_seq
     )
 

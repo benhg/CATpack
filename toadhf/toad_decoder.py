@@ -184,17 +184,45 @@ def _match_marker_sequence(spec, tone_bins, start_col, markers, hop=SYMBOL_HOP_F
             return False
     return True
 
-def _find_marker_fwd(spec, tone_bins, *, search_from: int = 0, **kw):
-    for c in range(search_from, spec.shape[1] - len(MARKERS_FWD_BITS) * SYMBOL_HOP_FRAMES, SYMBOL_HOP_FRAMES):
-        if _match_marker_sequence(spec, tone_bins, c, MARKERS_FWD_BITS):
-            return c, c + len(MARKERS_FWD_BITS) * SYMBOL_HOP_FRAMES
-    raise RuntimeError("Marker not found (forward)")
+def _count_matching_markers(spec, tone_bins, start_col, markers, hop=SYMBOL_HOP_FRAMES, max_dist=2) -> int:
+    """
+    Check how many markers in the sequence match (in order) starting at start_col.
+    Returns the count of consecutive markers that matched.
+    """
+    count = 0
+    for i, target_bits in enumerate(markers):
+        c = start_col + i * hop + MID_OFFSET
+        if c >= spec.shape[1]:
+            break
+        bits = _frame_bits(spec, c, tone_bins)
+        dist = np.count_nonzero(bits != target_bits)
+        if dist <= max_dist:
+            count += 1
+        else:
+            break  # stop at first failure
+    return count
 
-def _find_marker_rev(spec, tone_bins, *, search_to: int, **kw):
-    for c in range(search_to, len(MARKERS_REV_BITS) * SYMBOL_HOP_FRAMES, -SYMBOL_HOP_FRAMES):
-        if _match_marker_sequence(spec, tone_bins, c - len(MARKERS_REV_BITS) * SYMBOL_HOP_FRAMES, MARKERS_REV_BITS):
-            return c - len(MARKERS_REV_BITS) * SYMBOL_HOP_FRAMES, c
-    raise RuntimeError("Marker not found (reverse)")
+
+def _find_marker_fwd(spec, tone_bins, *, search_from: int = 0) -> tuple[int, int]:
+    seq_len = len(MARKERS_FWD_BITS) * SYMBOL_HOP_FRAMES
+    min_markers_to_sync = 2
+    for c in range(search_from, spec.shape[1] - seq_len, SYMBOL_HOP_FRAMES):
+        count = _count_matching_markers(spec, tone_bins, c, MARKERS_FWD_BITS)
+        if count >= min_markers_to_sync:
+            end_col = c + count * SYMBOL_HOP_FRAMES
+            return c, end_col
+    raise RuntimeError("Marker sequence not found (forward)")
+
+
+def _find_marker_rev(spec, tone_bins, *, search_to: int) -> tuple[int, int]:
+    seq_len = len(MARKERS_REV_BITS) * SYMBOL_HOP_FRAMES
+    min_markers_to_sync = 2
+    for c in range(search_to - seq_len, 0, -SYMBOL_HOP_FRAMES):
+        count = _count_matching_markers(spec, tone_bins, c, MARKERS_REV_BITS)
+        if count >= min_markers_to_sync:
+            end_col = c + count * SYMBOL_HOP_FRAMES
+            return c, end_col
+    raise RuntimeError("Marker sequence not found (reverse)")
 
 
 # -----------------------------------------------------------------------------
