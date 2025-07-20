@@ -4,7 +4,7 @@ Changes in this revision (2025‑07‑05 c)
 ------------------------------------
 * **Adaptive symbol matcher** – new `_symbols_from_bits()` turns a 25‑bit
   frame into **one or several plausible characters** based on Hamming‑distance
-  ≤ `MAX_DIST` (default 4).  When several share the same minimal distance, we
+  ≤`MAX_DIST` (default 4).  When several share the same minimal distance, we
   return a tie token like `[H|K]`.
 * **Graceful blank detection** – frames whose active‑bit count < 3 are treated
   as `?` to avoid spurious matches.
@@ -27,6 +27,7 @@ from toadhf.config import *
 import numpy as np
 import scipy.io.wavfile as wav
 import scipy.signal as sig
+from toadhf.toad_alphabet import TEXT_TO_TOAD, TOAD_TO_TEXT
 
 
 # === Decoder specific constants ===
@@ -39,10 +40,18 @@ MIN_ACTIVE_BITS       = 2                       # expect 2 ones per data symbol
 MARKER_MIN_BITS       = TOAD_NUM_TONES - 2           # ≥14 ⇒ treat as ^ marker
 MID_OFFSET = SYMBOL_HOP_FRAMES // 2               # ≈11  (middle of 23)
 
+MARKERS_FWD_BITS = [
+    np.array(list(map(int, TEXT_TO_TOAD["MARKER_1"])), dtype=np.uint8),
+    np.array(list(map(int, TEXT_TO_TOAD["MARKER_2"])), dtype=np.uint8),
+    np.array(list(map(int, TEXT_TO_TOAD["MARKER_3"])), dtype=np.uint8),
+    np.array(list(map(int, TEXT_TO_TOAD["MARKER_4"])), dtype=np.uint8),
+]
+
+MARKERS_REV_BITS = MARKERS_FWD_BITS[::-1]
+
 # -----------------------------------------------------------------------------
 # Code‑book
 # -----------------------------------------------------------------------------
-from toadhf.toad_alphabet import TEXT_TO_TOAD, TOAD_TO_TEXT
 
 _TOAD_BITS  = np.array([list(map(int, s)) for s in TEXT_TO_TOAD.values()],
                          dtype=np.uint8)
@@ -160,19 +169,61 @@ def _majority_window(spec: np.ndarray, tone_bins: np.ndarray, *, start: int, end
             run_start, run_len = None, 0
     return None
 
+def _match_marker_sequence(spec, tone_bins, start_col, markers, hop=SYMBOL_HOP_FRAMES, max_dist=2) -> bool:
+    """
+    Try to match a marker sequence at spec[:, start_col:] against given markers.
+    Returns True if the next len(markers) symbols match within max_dist each.
+    """
+    for i, target_bits in enumerate(markers):
+        c = start_col + i * hop + MID_OFFSET
+        if c >= spec.shape[1]:
+            return False
+        bits = _frame_bits(spec, c, tone_bins)
+        dist = np.count_nonzero(bits != target_bits)
+        if dist > max_dist:
+            return False
+    return True
 
-def _find_marker_fwd(spec: np.ndarray, tone_bins: np.ndarray, *, search_from: int = 0, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=search_from, end=spec.shape[1], reverse=False, tol_bits=2, **kw)
-    if res is None:
-        raise RuntimeError("Marker not found (forward)")
-    return res
+def _count_matching_markers(spec, tone_bins, start_col, markers, hop=SYMBOL_HOP_FRAMES, max_dist=2) -> int:
+    """
+    Check how many markers in the sequence match (in order) starting at start_col.
+    Returns the count of consecutive markers that matched.
+    """
+    count = 0
+    for i, target_bits in enumerate(markers):
+        c = start_col + i * hop + MID_OFFSET
+        if c >= spec.shape[1]:
+            break
+        bits = _frame_bits(spec, c, tone_bins)
+        dist = np.count_nonzero(bits != target_bits)
+        if dist <= max_dist:
+            count += 1
+        else:
+            break  # stop at first failure
+    return count
 
 
-def _find_marker_rev(spec: np.ndarray, tone_bins: np.ndarray, *, search_to: int, **kw) -> tuple[int, int]:
-    res = _majority_window(spec, tone_bins, start=0, end=search_to + 1, reverse=True, tol_bits=1, **kw)
-    if res is None:
-        raise RuntimeError("Marker not found (reverse)")
-    return res
+def _find_marker_fwd(spec, tone_bins, *, search_from: int = 0) -> tuple[int, int]:
+    seq_len = len(MARKERS_FWD_BITS) * SYMBOL_HOP_FRAMES
+    min_markers_to_sync = 2
+    for c in range(search_from, spec.shape[1] - seq_len, SYMBOL_HOP_FRAMES):
+        count = _count_matching_markers(spec, tone_bins, c, MARKERS_FWD_BITS)
+        if count >= min_markers_to_sync:
+            end_col = c + count * SYMBOL_HOP_FRAMES
+            return c, end_col
+    raise RuntimeError("Marker sequence not found (forward)")
+
+
+def _find_marker_rev(spec, tone_bins, *, search_to: int) -> tuple[int, int]:
+    seq_len = len(MARKERS_REV_BITS) * SYMBOL_HOP_FRAMES
+    min_markers_to_sync = 2
+    for c in range(search_to - seq_len, 0, -SYMBOL_HOP_FRAMES):
+        count = _count_matching_markers(spec, tone_bins, c, MARKERS_REV_BITS)
+        if count >= min_markers_to_sync:
+            end_col = c + count * SYMBOL_HOP_FRAMES
+            return c, end_col
+    raise RuntimeError("Marker sequence not found (reverse)")
+
 
 # -----------------------------------------------------------------------------
 # Redundancy vote (understands tie‑tokens)
