@@ -267,8 +267,8 @@ class truSDX:
     # This also assumes that the Audio and Mic/Key jacks on the (tr)uSDX are
     # connected to the headphone jack of a Mac. The baud parameter below is not
     # used.
-    def __init__(self, device="127.0.0.1:7006", audio_in="External Microphone",
-                 audio_out="External Headphones", model=2, baud=115200):
+    def __init__(self, device="127.0.0.1:7006", audio_in="External Headphones",
+                 audio_out="External Microphone", model=2, baud=115200):
         self.device = device
         self.model = model
         self.baud = baud
@@ -340,8 +340,8 @@ class IC705:
     # created by, e.g. Loopback or BlackHole, and that they are configured and
     # enabled in SDR-Control as the audio output and input devices. The baud
     # setting is not used.
-    def __init__(self, device="127.0.0.1:5001", audio_in="Radio to External",
-                 audio_out="External to Radio", model=2, baud=115200):
+    def __init__(self, device="127.0.0.1:5001", audio_in="External to Radio",
+                 audio_out="Radio to External", model=2, baud=115200):
         self.device = device
         self.model = model
         self.baud = baud
